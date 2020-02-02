@@ -1,6 +1,13 @@
 FROM alpine:latest
 
-RUN apk add --no-cache curl git wget unzip go python3 bash
+# curl for Taskfile
+# git for Terraform and Terragrunt repos
+# wget, unzip for Terraform Kafka proficer
+# musl-dev for GO
+# go for Terratest
+# Python3 for awscli
+# bash for install scripts relying on bash
+RUN apk add --no-cache curl git wget unzip go musl-dev python3 bash
 
 RUN pip3 install awscli
 
