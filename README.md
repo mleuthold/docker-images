@@ -24,6 +24,7 @@ Start a Docker container from the Docker image by running:
 
    docker run -it --rm \
    -p 8888:8888 \
+   -p 4040:4040 \
    --user root \
    -e GRANT_SUDO=yes \
    -e AWS_PROFILE=$AWS_PROFILE \
