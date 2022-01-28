@@ -40,5 +40,13 @@ Start a Docker container from the Docker image by running:
 
 Example code to read data from S3:
 ```python
+from pyspark.sql import SparkSession
+
+spark = SparkSession.builder \
+    .master("local") \
+    .appName("Word Count") \
+    .config("spark.some.config.option", "some-value") \
+    .getOrCreate()
+
 spark.read.parquet('s3a://BUCKET/PATH/*.snappy.parquet')
 ```
