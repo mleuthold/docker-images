@@ -1,0 +1,12 @@
+# https://taskfile.dev
+
+version: '3'
+
+tasks:
+  build-docker-image:
+    desc: Build Docker Image.
+    cmds:
+    - >
+      docker build
+      -t local.io/mleuthold/jupyter/pyspark-notebook:spark-3.2.0
+      .

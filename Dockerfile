@@ -1,47 +1,60 @@
-FROM golang:1.13.7-alpine
+FROM jupyter/pyspark-notebook:spark-3.2.0
 
-# curl for Taskfile
-# git for Terraform and Terragrunt repos
-# wget, unzip for Terraform Kafka proficer
-# Python3 for awscli
-# bash for install scripts relying on bash
-RUN apk add --no-cache curl git wget unzip python3 bash
+# precaution against CVE-2021-44228 and CVE-2021-45046
+ENV _JAVA_OPTIONS='-Dlog4j2.formatMsgNoLookups=true' JAVA_TOOLS_OPTIONS='-Dlog4j2.formatMsgNoLookups=true'
 
-RUN pip3 install awscli
+USER root
 
-# TASKFILE
-RUN curl -sL https://taskfile.dev/install.sh | sh
+RUN echo "Installing handy tools" && \
+    sudo apt update && sudo apt install -y vim curl \
+    && rm -rf /var/lib/apt/lists/*
 
-# TERRAFORM
-RUN git clone https://github.com/tfutils/tfenv.git ~/.tfenv \
-    && ln -s ~/.tfenv/bin/* /usr/local/bin \
-    && tfenv install 0.12.20
+# ZSH installed
+RUN sudo apt-get update && sudo apt-get install -y zsh \
+    && rm -rf /var/lib/apt/lists/* \
+    && usermod --shell /bin/zsh jovyan
 
-# TERRAGRUNT
-RUN git clone https://github.com/cunymatthieu/tgenv.git ~/.tgenv \
-    && ln -s ~/.tgenv/bin/* /usr/local/bin \
-    && tgenv install 0.21.11
+ENV SHELL=/bin/zsh
 
-# link to providers
-# https://releases.hashicorp.com/
+# TASKFILE installed
+RUN wget https://taskfile.dev/install.sh && bash install.sh -b /usr/local/bin
 
-# TERRAFORM - KAFKA PROVIDER
-RUN TERRAFORM_KAFKA_PROVIDER_VERSION=0.2.3 \
-    && wget https://github.com/Mongey/terraform-provider-kafka/releases/download/v"$TERRAFORM_KAFKA_PROVIDER_VERSION"/terraform-provider-kafka_"$TERRAFORM_KAFKA_PROVIDER_VERSION"_linux_amd64.tar.gz \
-    && tar -xf terraform-provider-kafka_"$TERRAFORM_KAFKA_PROVIDER_VERSION"_linux_amd64.tar.gz \
-    && mkdir --parents ~/.terraform.d/plugins \
-    && mv terraform-provider-kafka_v"$TERRAFORM_KAFKA_PROVIDER_VERSION" ~/.terraform.d/plugins/
+USER $NB_UID
 
-# TERRAFORM - AWS PROVIDER
-RUN TERRAFORM_AWS_PROVIDER_VERSION=2.47.0 \
-    && wget https://releases.hashicorp.com/terraform-provider-aws/"$TERRAFORM_AWS_PROVIDER_VERSION"/terraform-provider-aws_"$TERRAFORM_AWS_PROVIDER_VERSION"_linux_amd64.zip \
-    && unzip terraform-provider-aws_"$TERRAFORM_AWS_PROVIDER_VERSION"_linux_amd64.zip \
-    && mkdir --parents ~/.terraform.d/plugins \
-    && mv terraform-provider-aws_v"$TERRAFORM_AWS_PROVIDER_VERSION"_x4 ~/.terraform.d/plugins/
+# ZSH configured
+RUN sh -c "$(wget https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh -O -)" "" --unattended \
+    && git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-autosuggestions \
+    && git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting \
+    && sed -i.bak 's/^plugins=.*/plugins=(zsh-autosuggestions zsh-syntax-highlighting git task)/' $HOME/.zshrc \
+    && THEME="ys"; sed -i s/^ZSH_THEME=".\+"$/ZSH_THEME=\"$THEME\"/g ~/.zshrc \
+    && rm install.sh
 
-# TERRAFORM - DATADOG PROVIDER
-RUN TERRAFORM_DATADOG_PROVIDER_VERSION=2.6.0 \
-    && wget https://releases.hashicorp.com/terraform-provider-datadog/"$TERRAFORM_DATADOG_PROVIDER_VERSION"/terraform-provider-datadog_"$TERRAFORM_DATADOG_PROVIDER_VERSION"_linux_amd64.zip \
-    && unzip terraform-provider-datadog_"$TERRAFORM_DATADOG_PROVIDER_VERSION"_linux_amd64.zip \
-    && mkdir --parents ~/.terraform.d/plugins \
-    && mv terraform-provider-datadog_v"$TERRAFORM_DATADOG_PROVIDER_VERSION"_x4 ~/.terraform.d/plugins/
+# TASKFILE configured
+RUN echo 'autoload -U compinit && compinit' >> ~/.zshrc \
+    && git clone https://github.com/sawadashota/go-task-completions.git ${ZSH_CUSTOM:=~/.oh-my-zsh/custom}/plugins/task
+
+# POETRY configured
+ENV PATH="/home/jovyan/.local/bin:$PATH"
+RUN curl -sSL https://install.python-poetry.org | python3 - \
+    && mkdir -p ${ZSH_CUSTOM:=~/.oh-my-zsh/custom}/plugins/poetry \
+    && poetry completions zsh >${ZSH_CUSTOM:=~/.oh-my-zsh/custom}/plugins/poetry/_poetry
+
+# Python dependencies
+# COPY requirements.txt requirements.txt
+# RUN pip install --no-cache-dir -r requirements.txt \
+#     && rm requirements.txt
+
+COPY poetry.toml $HOME/poetry.toml
+COPY pyproject.toml $HOME/pyproject.toml
+COPY poetry.lock $HOME/poetry.lock
+RUN poetry install --no-root && rm $HOME/poetry.toml $HOME/pyproject.toml $HOME/poetry.lock
+
+# configure Jupyter lab
+COPY --chown=jovyan:users .jupyter/jupyter_notebook_config.py $HOME/.jupyter/jupyter_notebook_config.py
+COPY --chown=jovyan:users .config/jupytext/.jupytext $HOME/.config/jupytext/.jupytext
+COPY --chown=jovyan:users opt/conda/share/jupyter/lab/settings/overrides.json /opt/conda/share/jupyter/lab/settings/overrides.json
+
+# How to display more than just the last result in Jupyter cell?
+# https://stackoverflow.com/questions/36786722/how-to-display-full-output-in-jupyter-not-only-last-result
+COPY --chown=jovyan:users .ipython/profile_default/ipython_config.py $HOME/.ipython/profile_default/ipython_config.py
+COPY --chown=jovyan:users .ipython/profile_default/ipython_kernel_config.py $HOME/.ipython/profile_default/ipython_kernel_config.py
