@@ -19,6 +19,14 @@ ENV SHELL=/bin/zsh
 # TASKFILE installed
 RUN wget https://taskfile.dev/install.sh && bash install.sh -b /usr/local/bin
 
+# Apache Spark dependencies
+RUN wget https://repo1.maven.org/maven2/com/google/cloud/bigdataoss/gcs-connector/hadoop3-2.2.2/gcs-connector-hadoop3-2.2.2-shaded.jar --output-document=gcs-connector-hadoop3-2.2.2-shaded.jar && \
+    mv gcs-connector-hadoop3-2.2.2-shaded.jar /usr/local/spark/jars/
+
+RUN mkdir -p /opt/postgres/ && \
+    wget https://repo1.maven.org/maven2/org/postgresql/postgresql/42.2.23/postgresql-42.2.23.jar --output-document=postgresql-42.2.23.jar && \
+    mv postgresql-42.2.23.jar /opt/postgres/
+
 USER $NB_UID
 
 # ZSH configured
@@ -48,6 +56,11 @@ COPY poetry.toml $HOME/poetry.toml
 COPY pyproject.toml $HOME/pyproject.toml
 COPY poetry.lock $HOME/poetry.lock
 RUN poetry install --no-root && rm $HOME/poetry.toml $HOME/pyproject.toml $HOME/poetry.lock
+
+# configure Apache Spark
+RUN echo :quit | spark-shell --conf spark.jars.packages=com.amazonaws:aws-java-sdk-bundle:1.12.31,org.apache.hadoop:hadoop-aws:3.2.2,com.google.cloud.spark:spark-bigquery-with-dependencies_2.12:0.22.0
+COPY usr/local/spark/conf/spark-defaults.conf /usr/local/spark/conf/spark-defaults.conf
+COPY usr/local/spark/conf/log4j.properties /usr/local/spark/conf/log4j.properties
 
 # configure Jupyter lab
 COPY --chown=jovyan:users .jupyter/jupyter_notebook_config.py $HOME/.jupyter/jupyter_notebook_config.py
