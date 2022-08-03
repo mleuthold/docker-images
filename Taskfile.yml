@@ -28,3 +28,12 @@ tasks:
       -v "$HOME/.aws":/home/jovyan/.aws \
       -v "$HOME":/home/jovyan/work \
       {{.DOCKER_IMAGE_NAME}}:{{.DOCKER_IMAGE_TAG}}
+
+  poetry-mgmt:
+    desc: start a Python environment with Poetry pre installed
+    cmds:
+    - >
+      docker run -it --rm
+      -v $(pwd):/project
+      -w /project
+      {{.DOCKER_IMAGE_NAME}}:{{.DOCKER_IMAGE_TAG}} bash

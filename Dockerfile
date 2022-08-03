@@ -1,4 +1,4 @@
-FROM jupyter/pyspark-notebook:spark-3.2.0
+FROM jupyter/pyspark-notebook:spark-3.3.0
 
 # precaution against CVE-2021-44228 and CVE-2021-45046
 ENV _JAVA_OPTIONS='-Dlog4j2.formatMsgNoLookups=true' JAVA_TOOLS_OPTIONS='-Dlog4j2.formatMsgNoLookups=true'
