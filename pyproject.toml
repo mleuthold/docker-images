@@ -5,14 +5,13 @@ description = ""
 authors = ["Your Name <you@example.com>"]
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = ">=3.10,<3.11"
 papermill = {extras = ["s3"], version = "^2.3.4"}
-awscli = "^1.22.46"
-jupytext = "^1.13.6"
-jupyterlab-code-formatter = "^1.4.10"
-black = "^21.12b0"
+awscli = "^1.25.44"
+jupytext = "^1.14.1"
+jupyterlab-code-formatter = "^1.5.1"
+black = "^22.6.0"
 isort = "^5.10.1"
-mistune = "^2.0.3"
 
 [tool.poetry.dev-dependencies]
 
